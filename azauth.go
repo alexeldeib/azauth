@@ -24,14 +24,17 @@ func (e NoAuthorizerError) Error() string {
 // Notably, the environment settings contain the name of the Azure Cloud,
 // required for parameterizing authentication for for each Cloud environment (e.g. Public, Fairfax, Mooncake).
 type Config struct {
+	userAgent     string
 	Log           *zap.Logger
 	Sugar         *zap.SugaredLogger
 	settings      *auth.EnvironmentSettings
 	armAuthorizer *autorest.Authorizer
 }
 
+type Option func(*Config) *Config
+
 // New fetches and caches environment settings for resource authentication and initializes loggers.
-func New() (*Config, error) {
+func New(opts ...Option) (*Config, error) {
 	var err error
 	var settings auth.EnvironmentSettings
 	var log *zap.Logger
@@ -46,11 +49,26 @@ func New() (*Config, error) {
 
 	log = log.Named("azauth")
 
-	return &Config{
-		settings: &settings,
-		Log:      log,
-		Sugar:    log.Sugar(),
-	}, nil
+	c := &Config{
+		userAgent: "azauth",
+		settings:  &settings,
+		Log:       log,
+		Sugar:     log.Sugar(),
+	}
+
+	for _, opt := range opts {
+		c = opt(c)
+	}
+
+	return c, nil
+}
+
+// UserAgent provides a method of setting the user agent on the client.
+func UserAgent(userAgent string) Option {
+	return func(c *Config) *Config {
+		c.userAgent = userAgent
+		return c
+	}
 }
 
 // SetAuthorizers initializes and caches all commonly used authorizers.
@@ -108,7 +126,11 @@ func (c *Config) GetAuthorizerForResource(resource string) (authorizer autorest.
 	return nil, NoAuthorizerError{}
 }
 
-func AuthorizeClient(authorizer autorest.Authorizer, client *autorest.Client, userAgent string) error {
-	client.Authorizer = authorizer
-	return client.AddToUserAgent(userAgent)
+// AuthorizeClientForResource tries to fetch an authorizer using GetAuthorizerForResource and inject it into the provided client.
+func (c *Config) AuthorizeClientForResource(resource string, client *autorest.Client, userAgent string) (err error) {
+	if authorizer, err := c.GetAuthorizerForResource(resource); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(userAgent)
+	}
+	return
 }
