@@ -1,0 +1,112 @@
+package azauth
+
+import (
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"go.uber.org/zap"
+)
+
+const errorMsg = "no authorizer available"
+
+// NoAuthorizerError indicates a failure to get an authorizer from any of (in order): File, CLI, and environment.
+type NoAuthorizerError struct{}
+
+// Error returns the static error message for total failure to authorize.
+// More specific error messages will be logged, but not returned (as all but one will generally fail).
+func (e NoAuthorizerError) Error() string {
+	return errorMsg
+}
+
+/* Config holds environment settings, cached authorizers, and global loggers.
+   Notably, the environment settings contain the name of the Azure Cloud,
+   required for parameterizing authentication for for each Cloud environment (e.g. Public, Fairfax, Mooncake)
+*/
+type Config struct {
+	Log           *zap.Logger
+	Sugar         *zap.SugaredLogger
+	settings      *auth.EnvironmentSettings
+	armAuthorizer *autorest.Authorizer
+}
+
+// New fetches and caches environment settings for resource authentication and initializes loggers.
+func New() (*Config, error) {
+	var err error
+	var settings auth.EnvironmentSettings
+	var log *zap.Logger
+
+	if settings, err = auth.GetSettingsFromEnvironment(); err != nil {
+		return nil, err
+	}
+
+	if log, err = zap.NewProduction(); err != nil {
+		return nil, err
+	}
+
+	log = log.Named("azauth")
+
+	return &Config{
+		settings: &settings,
+		Log:      log,
+		Sugar:    log.Sugar(),
+	}, nil
+}
+
+// SetAuthorizers initializes and caches all commonly used authorizers.
+func (c *Config) SetAuthorizers() error {
+	if err := c.setArmAuthorizer(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Config) setArmAuthorizer() error {
+	armAuthorizer, err := c.GetArmAuthorizer()
+	if err != nil {
+		return err
+	}
+	c.armAuthorizer = &armAuthorizer
+	return nil
+}
+
+// GetArmAuthorizer returns a resource management authorizer for the current Azure Cloud environment.
+// It will attempt to use a cached value from startup, or delegate to GetAuthorizerForResource.
+func (c *Config) GetArmAuthorizer() (autorest.Authorizer, error) {
+	// should just return immediately? or set lazily?
+	if c.armAuthorizer != nil {
+		c.Sugar.Info("using cached arm authorizer")
+		return *c.armAuthorizer, nil
+	}
+	return c.GetAuthorizerForResource(c.settings.Environment.ResourceManagerEndpoint)
+}
+
+// GetAuthorizerForResource will return an authorizer to the resource or an error.
+// It tries to use file, cli, and finally environment authentication, respectively.
+func (c *Config) GetAuthorizerForResource(resource string) (authorizer autorest.Authorizer, err error) {
+	log := c.Sugar.With("method", "file")
+	if authorizer, err = auth.NewAuthorizerFromFileWithResource(resource); err == nil {
+		log.Info("ok")
+		return
+	}
+	log.Error(err)
+
+	log = c.Sugar.With("method", "cli")
+	if authorizer, err = auth.NewAuthorizerFromCLIWithResource(resource); err == nil {
+		log.Info("ok")
+		return
+	}
+	log.Error(err)
+
+	log = c.Sugar.With("method", "env")
+	if authorizer, err = auth.NewAuthorizerFromEnvironmentWithResource(resource); err == nil {
+		log.Info("ok")
+		return
+	}
+
+	log.Error(err)
+	return nil, NoAuthorizerError{}
+}
+
+func AuthorizeClient(authorizer autorest.Authorizer, client *autorest.Client, userAgent string) error {
+	client.Authorizer = authorizer
+	return client.AddToUserAgent(userAgent)
+}
