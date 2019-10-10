@@ -1,3 +1,6 @@
+// This package provides some utility tooling for authorization to Azure resources.
+// Many projects build a layer like this on top of the Azure SDKs to handle resource authorization.
+// This package attempts to provide a single source for such a layer.
 package azauth
 
 import (
@@ -17,10 +20,9 @@ func (e NoAuthorizerError) Error() string {
 	return errorMsg
 }
 
-/* Config holds environment settings, cached authorizers, and global loggers.
-   Notably, the environment settings contain the name of the Azure Cloud,
-   required for parameterizing authentication for for each Cloud environment (e.g. Public, Fairfax, Mooncake)
-*/
+// Config holds environment settings, cached authorizers, and global loggers.
+// Notably, the environment settings contain the name of the Azure Cloud,
+// required for parameterizing authentication for for each Cloud environment (e.g. Public, Fairfax, Mooncake).
 type Config struct {
 	Log           *zap.Logger
 	Sugar         *zap.SugaredLogger
