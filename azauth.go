@@ -31,7 +31,7 @@ type Config struct {
 	armAuthorizer *autorest.Authorizer
 }
 
-type Option func(*Config) *Config
+type Option func(*Config)
 
 // New fetches and caches environment settings for resource authentication and initializes loggers.
 func New(opts ...Option) (*Config, error) {
@@ -57,7 +57,7 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	for _, opt := range opts {
-		c = opt(c)
+		opt(c)
 	}
 
 	return c, nil
@@ -65,9 +65,8 @@ func New(opts ...Option) (*Config, error) {
 
 // UserAgent provides a method of setting the user agent on the client.
 func UserAgent(userAgent string) Option {
-	return func(c *Config) *Config {
+	return func(c *Config) {
 		c.userAgent = userAgent
-		return c
 	}
 }
 
