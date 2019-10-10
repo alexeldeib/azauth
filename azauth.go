@@ -126,7 +126,7 @@ func (c *Config) GetAuthorizerForResource(resource string) (authorizer autorest.
 	return nil, NoAuthorizerError{}
 }
 
-// AuthorizeClientForResource tries to fetch an authorizer using GetAuthorizerForResource and inject it into the provided client.
+// AuthorizeClientForResource tries to fetch an authorizer using GetAuthorizerForResource and inject it into a client.
 func (c *Config) AuthorizeClientForResource(resource string, client *autorest.Client, userAgent string) (err error) {
 	if authorizer, err := c.GetAuthorizerForResource(resource); err == nil {
 		client.Authorizer = authorizer
