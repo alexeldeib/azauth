@@ -6,6 +6,7 @@ require (
 	github.com/Azure/go-autorest v13.1.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.9.1
 	github.com/Azure/go-autorest/autorest/azure/auth v0.3.0
+	github.com/prometheus/common v0.7.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.2.0 // indirect
 	go.uber.org/zap v1.10.0
