@@ -47,29 +47,9 @@ func UserAgent(userAgent string) Option {
 	}
 }
 
-// GetAuthorizer returns a resource management authorizer for the current Azure Cloud environment.
-func (c *Config) GetAuthorizer() (autorest.Authorizer, error) {
-	return auth.NewAuthorizerFromEnvironment()
-}
-
-// GetAuthorizerForResource will return an authorizer to the resource or an error.
-func (c *Config) GetAuthorizerForResource(resource string) (autorest.Authorizer, error) {
-	return auth.NewAuthorizerFromEnvironmentWithResource(resource)
-}
-
-// GetFileAuthorizer returns a file-based resource management authorizer for the current Azure Cloud environment.
-func (c *Config) GetFileAuthorizer() (autorest.Authorizer, error) {
-	return auth.NewAuthorizerFromFile(c.env.ResourceManagerEndpoint)
-}
-
-// GetFileAuthorizerForResource will return a file-based authorizer to the resource or an error.
-func (c *Config) GetFileAuthorizerForResource(resource string) (autorest.Authorizer, error) {
-	return auth.NewAuthorizerFromFileWithResource(resource)
-}
-
 // AuthorizeClientForResource tries to fetch an authorizer using GetAuthorizerForResource and inject it into a client.
 func (c *Config) AuthorizeClientForResource(client *autorest.Client, resource string) (err error) {
-	if authorizer, err := c.GetAuthorizerForResource(resource); err == nil {
+	if authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(resource); err == nil {
 		client.Authorizer = authorizer
 		return client.AddToUserAgent(c.userAgent)
 	}
@@ -78,7 +58,7 @@ func (c *Config) AuthorizeClientForResource(client *autorest.Client, resource st
 
 // AuthorizeClienet tries to fetch an authorizer for management operations.
 func (c *Config) AuthorizeClient(client *autorest.Client) (err error) {
-	if authorizer, err := c.GetAuthorizer(); err == nil {
+	if authorizer, err := auth.NewAuthorizerFromEnvironment(); err == nil {
 		client.Authorizer = authorizer
 		return client.AddToUserAgent(c.userAgent)
 	}
@@ -87,7 +67,7 @@ func (c *Config) AuthorizeClient(client *autorest.Client) (err error) {
 
 // AuthorizeClientFromFile tries to fetch an authorizer using GetFileAuthorizer and inject it into a client.
 func (c *Config) AuthorizeClientFromFile(client *autorest.Client) (err error) {
-	if authorizer, err := c.GetFileAuthorizer(); err == nil {
+	if authorizer, err := auth.NewAuthorizerFromFile(c.env.ResourceManagerEndpoint); err == nil {
 		client.Authorizer = authorizer
 		return client.AddToUserAgent(c.userAgent)
 	}
@@ -96,7 +76,7 @@ func (c *Config) AuthorizeClientFromFile(client *autorest.Client) (err error) {
 
 // AuthorizeClientFromFile tries to fetch an authorizer using GetFileAuthorizer and inject it into a client.
 func (c *Config) AuthorizeClientFromFileForResource(client *autorest.Client, resource string) (err error) {
-	if authorizer, err := c.GetFileAuthorizerForResource(resource); err == nil {
+	if authorizer, err := auth.NewAuthorizerFromFileWithResource(resource); err == nil {
 		client.Authorizer = authorizer
 		return client.AddToUserAgent(c.userAgent)
 	}
