@@ -4,6 +4,8 @@
 package azauth
 
 import (
+	"errors"
+
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -15,6 +17,9 @@ import (
 type Config struct {
 	userAgent string
 	env       *azure.Environment
+	app       *string
+	key       *string
+	tenant    *string
 }
 
 type Option func(*Config)
@@ -44,6 +49,27 @@ func New(opts ...Option) (*Config, error) {
 func UserAgent(userAgent string) Option {
 	return func(c *Config) {
 		c.userAgent = userAgent
+	}
+}
+
+// App provides a method of setting the user agent on the client.
+func App(app *string) Option {
+	return func(c *Config) {
+		c.app = app
+	}
+}
+
+// Key provides a method of setting the user agent on the client.
+func Key(key *string) Option {
+	return func(c *Config) {
+		c.key = key
+	}
+}
+
+// Tenant provides a method of setting the user agent on the client.
+func Tenant(tenant *string) Option {
+	return func(c *Config) {
+		c.tenant = tenant
 	}
 }
 
@@ -81,4 +107,40 @@ func (c *Config) AuthorizeClientFromFileForResource(client *autorest.Client, res
 		return client.AddToUserAgent(c.userAgent)
 	}
 	return
+}
+
+func (c *Config) GetAuthorizerFromArgs() (autorest.Authorizer, error) {
+	if err := c.validateArgs(); err != nil {
+		return nil, err
+	}
+	authConfig := auth.ClientCredentialsConfig{
+		ClientID:     *c.app,
+		ClientSecret: *c.key,
+		TenantID:     *c.tenant,
+		Resource:     c.env.ResourceManagerEndpoint,
+		AADEndpoint:  c.env.ActiveDirectoryEndpoint,
+	}
+
+	return authConfig.Authorizer()
+}
+
+// AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
+func (c *Config) AuthorizeClientFromArgs(client *autorest.Client) (err error) {
+	return c.AuthorizeClientFromArgsForResource(client, c.env.ResourceManagerEndpoint)
+}
+
+// AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
+func (c *Config) AuthorizeClientFromArgsForResource(client *autorest.Client, resource string) (err error) {
+	if authorizer, err := c.GetAuthorizerFromArgs(); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(c.userAgent)
+	}
+	return
+}
+
+func (c *Config) validateArgs() error {
+	if c.app == nil || c.tenant == nil || c.key == nil {
+		return errors.New("app, tenant, and key must all be provided as options for authenticating with args")
+	}
+	return nil
 }
