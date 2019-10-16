@@ -17,9 +17,9 @@ import (
 type Config struct {
 	userAgent string
 	env       *azure.Environment
-	app       *string
-	key       *string
-	tenant    *string
+	app       string
+	key       string
+	tenant    string
 }
 
 type Option func(*Config)
@@ -53,21 +53,21 @@ func UserAgent(userAgent string) Option {
 }
 
 // App provides a method of setting the user agent on the client.
-func App(app *string) Option {
+func App(app string) Option {
 	return func(c *Config) {
 		c.app = app
 	}
 }
 
 // Key provides a method of setting the user agent on the client.
-func Key(key *string) Option {
+func Key(key string) Option {
 	return func(c *Config) {
 		c.key = key
 	}
 }
 
 // Tenant provides a method of setting the user agent on the client.
-func Tenant(tenant *string) Option {
+func Tenant(tenant string) Option {
 	return func(c *Config) {
 		c.tenant = tenant
 	}
@@ -114,9 +114,9 @@ func (c *Config) GetAuthorizerFromArgs() (autorest.Authorizer, error) {
 		return nil, err
 	}
 	authConfig := auth.ClientCredentialsConfig{
-		ClientID:     *c.app,
-		ClientSecret: *c.key,
-		TenantID:     *c.tenant,
+		ClientID:     c.app,
+		ClientSecret: c.key,
+		TenantID:     c.tenant,
 		Resource:     c.env.ResourceManagerEndpoint,
 		AADEndpoint:  c.env.ActiveDirectoryEndpoint,
 	}
@@ -139,7 +139,7 @@ func (c *Config) AuthorizeClientFromArgsForResource(client *autorest.Client, res
 }
 
 func (c *Config) validateArgs() error {
-	if c.app == nil || c.tenant == nil || c.key == nil {
+	if c.app == "" || c.tenant == "" || c.key == "" {
 		return errors.New("app, tenant, and key must all be provided as options for authenticating with args")
 	}
 	return nil
